@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+**/node_modules/
+package-lock.json
+**/package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Build outputs
+/dist
+/build
+**/dist
+**/build
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Uploads and temporary files
+/uploads/*
+/Backend/uploads/*
+/Backend/temp/*
+!/uploads/.gitkeep
+!/Backend/uploads/.gitkeep
+!/Backend/temp/.gitkeep
+
+# Cache directories
+.npm
+.eslintcache
+.cache
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Misc
+*.bak
+*.temp
+*.tmp
+.DS_Store
+Thumbs.db

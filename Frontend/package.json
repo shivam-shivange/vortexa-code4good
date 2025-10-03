@@ -1,0 +1,49 @@
+{
+  "name": "learningapp-frontend",
+  "version": "1.0.0",
+  "description": "Modern frontend for LearningApp - Smart Video Learning Platform",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server . -p 3000 -c-1",
+    "dev": "npx http-server . -p 3000 -c-1 -o",
+    "build": "echo 'No build process needed for vanilla JS/HTML/CSS'",
+    "test": "echo 'No tests specified'",
+    "lint": "npx eslint js/*.js",
+    "format": "npx prettier --write .",
+    "serve": "npx serve . -p 3000"
+  },
+  "keywords": [
+    "learning",
+    "education",
+    "video",
+    "ai",
+    "quiz",
+    "summary",
+    "frontend",
+    "vanilla-js"
+  ],
+  "author": "LearningApp Team",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "prettier": "^2.0.0",
+    "http-server": "^14.0.0",
+    "serve": "^14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/learningapp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/learningapp/issues"
+  },
+  "homepage": "https://github.com/yourusername/learningapp#readme"
+}

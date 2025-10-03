@@ -1,0 +1,293 @@
+import pool from '../utils/db.js';
+import { generateQuiz as generateQuizService, calculateQuizScore } from '../services/quizService.js';
+import { 
+  extractKeyConcepts,
+  calculateImprovementMetrics,
+  generateComprehensiveRecommendations
+} from '../services/performanceAnalysisService.js';
+import {
+  generateCustomMessage,
+  analyzeQuestionsByTopic,
+  generateLearningRecommendations
+} from '../utils/quizUtils.js';
+
+/**
+ * Generate quiz for a lecture
+ */
+export const generateQuiz = async (req, res) => {
+  try {
+    const lectureId = req.params.id;
+    const { lang = 'en', difficulty = 'medium', questionCount = 10 } = req.body;
+
+    console.log(`[Quiz Generation] Starting quiz generation for lecture ${lectureId}`);
+
+    // First validate the lecture exists and is ready
+    const lectureResult = await pool.query(
+      'SELECT id, title, processing_status FROM lectures WHERE id = $1',
+      [lectureId]
+    );
+
+    if (lectureResult.rows.length === 0) {
+      console.error(`[Quiz Generation] Lecture ${lectureId} not found`);
+      return res.status(404).json({ error: 'Lecture not found' });
+    }
+
+    const lecture = lectureResult.rows[0];
+
+    if (lecture.processing_status !== 'completed') {
+      console.error(`[Quiz Generation] Lecture ${lectureId} not ready (status: ${lecture.processing_status})`);
+      return res.status(400).json({ error: 'Lecture processing not completed' });
+    }
+
+    // Generate quiz using the service
+    const quiz = await generateQuizService(lectureId, lang, difficulty, questionCount);
+    
+    if (!quiz.success) {
+      throw new Error(quiz.error || 'Failed to generate quiz');
+    }
+
+    console.log(`[Quiz Generation] Successfully generated quiz for lecture ${lectureId}`);
+    
+    res.json({
+      quizId: quiz.quizId,
+      questions: quiz.questions.map(q => ({
+        text: q.question,
+        options: q.options,
+        topic: q.topic || 'General'
+      }))
+    });
+
+  } catch (error) {
+    console.error('[Quiz Generation] Error:', error);
+    res.status(500).json({ error: 'Error generating quiz' });
+  }
+};
+
+/**
+ * Submit quiz attempt and calculate performance
+ */
+export const submitQuizAttempt = async (req, res) => {
+  try {
+    const { quiz_id, answers = {}, time_taken = 0, lecture_id } = req.body;
+    const userId = req.user.userId; // Using userId from JWT payload
+
+    if (!quiz_id) {
+      return res.status(400).json({ error: 'Quiz ID is required' });
+    }
+
+    // Get quiz details
+    const quiz = await pool.query(
+      'SELECT * FROM quizzes WHERE id = $1',
+      [quiz_id]
+    );
+
+    if (quiz.rows.length === 0) {
+      return res.status(404).json({ error: 'Quiz not found' });
+    }
+
+    let quizQuestions;
+    try {
+      quizQuestions = quiz.rows[0].items_json.questions;
+    } catch (error) {
+      console.error('Error parsing quiz questions:', error);
+      return res.status(500).json({ error: 'Invalid quiz data' });
+    }
+
+    // Calculate performance metrics
+    const performance = calculateQuizScore(quizQuestions, answers);
+    
+    // Get previous attempts for comparison
+    const previousAttempts = await pool.query(`
+      SELECT qa.*, q.difficulty, q.lang
+      FROM quiz_attempts qa
+      JOIN quizzes q ON qa.quiz_id = q.id
+      WHERE qa.user_id = $1 AND q.lecture_id = $2
+      ORDER BY qa.attempted_at DESC
+    `, [userId, lecture_id]);
+
+    // Calculate improvement metrics
+    const improvementMetrics = {
+      previousBestScore: 0,
+      scoreImprovement: 0,
+      attemptsCount: previousAttempts.rows.length + 1,
+      consistentlyImproving: false
+    };
+
+    if (previousAttempts.rows.length > 0) {
+      const previousScores = previousAttempts.rows.map(a => a.score);
+      improvementMetrics.previousBestScore = Math.max(...previousScores);
+      improvementMetrics.scoreImprovement = performance.percentage - improvementMetrics.previousBestScore;
+      improvementMetrics.consistentlyImproving = previousScores.every((score, i, arr) => 
+        i === 0 || score <= arr[i - 1]
+      );
+    }
+
+    // Analyze by topic
+    const topicAnalysis = analyzeQuestionsByTopic(quizQuestions, answers);
+
+    // Store the attempt
+    const result = await pool.query(
+      'INSERT INTO quiz_attempts(quiz_id, user_id, score, attempt_data, attempted_at) VALUES($1,$2,$3,$4,$5) RETURNING *',
+      [
+        quiz_id, 
+        userId, 
+        performance.percentage,
+        JSON.stringify({
+          answers,
+          time_taken,
+          performance,
+          topicAnalysis,
+          improvementMetrics
+        }),
+        new Date()
+      ]
+    );
+
+    res.json({
+      id: result.rows[0].id,
+      score: performance.percentage,
+      performance: {
+        ...performance,
+        topicAnalysis,
+        improvementMetrics
+      },
+      recommendations: generateLearningRecommendations([
+        { score: performance.percentage, topicAnalysis }
+      ]),
+      message: generateCustomMessage(performance, improvementMetrics)
+    });
+
+  } catch (error) {
+    console.error('Quiz submission error:', error);
+    res.status(500).json({ error: 'Failed to submit quiz attempt' });
+  }
+};
+
+/**
+ * Get quiz attempts history
+ */
+export const getQuizAttempts = async (req, res) => {
+  try {
+    const quizId = req.params.quizId;
+    const userId = req.user.userId;
+
+    const attemptsData = await pool.query(
+      'SELECT * FROM quiz_attempts WHERE quiz_id=$1 AND user_id=$2 ORDER BY attempted_at DESC',
+      [quizId, userId]
+    );
+
+    const attempts = attemptsData.rows.map(attempt => {
+      const attemptData = JSON.parse(attempt.attempt_data);
+      return {
+        id: attempt.id,
+        score: attempt.score,
+        submittedAt: attempt.attempted_at,
+        timeTaken: attemptData.time_taken,
+        performance: attemptData.performance,
+        topicAnalysis: attemptData.topicAnalysis,
+        improvement: attemptData.improvementMetrics
+      };
+    });
+
+    res.json(attempts);
+  } catch (error) {
+    console.error('Error fetching quiz attempts:', error);
+    res.status(500).json({ error: 'Failed to fetch quiz attempts' });
+  }
+};
+
+/**
+ * Get comprehensive performance report
+ */
+export const getQuizPerformanceReport = async (req, res) => {
+  try {
+    const { lectureId } = req.params;
+    const userId = req.user.userId;
+
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    if (!lectureId) {
+      return res.status(400).json({ error: 'Lecture ID is required' });
+    }
+
+    console.log(`[Performance Report] Generating report for lecture ${lectureId}, user ${userId}`);
+
+    // Get lecture data and attempts
+    const [lectureData, quizAttemptsData] = await Promise.all([
+      pool.query(`
+        SELECT l.*, array_agg(tc.content ORDER BY tc.chunk_order) as transcript_chunks
+        FROM lectures l
+        LEFT JOIN transcript_chunks tc ON l.id = tc.lecture_id
+        WHERE l.id = $1
+        GROUP BY l.id
+      `, [lectureId]),
+      pool.query(`
+        SELECT qa.*, q.difficulty, q.lang, q.items_json
+        FROM quiz_attempts qa
+        JOIN quizzes q ON qa.quiz_id = q.id
+        WHERE q.lecture_id = $1 AND qa.user_id = $2
+        ORDER BY qa.attempted_at DESC
+      `, [lectureId, userId])
+    ]);
+
+    if (!lectureData.rows[0]) {
+      return res.status(404).json({ error: 'Lecture not found' });
+    }
+
+    const lecture = lectureData.rows[0];
+    const attempts = quizAttemptsData.rows;
+
+    // Extract concepts and calculate metrics
+    const transcriptText = lecture.transcript_chunks?.join(' ') || '';
+    const keyConcepts = extractKeyConcepts(transcriptText);
+    
+    const performanceTrends = attempts.map(attempt => {
+      const attemptData = JSON.parse(attempt.attempt_data);
+      return {
+        score: attempt.score,
+        date: attempt.attempted_at,
+        time_taken: attemptData.time_taken,
+        topics: attemptData.topicAnalysis
+      };
+    });
+
+    const improvementMetrics = calculateImprovementMetrics(performanceTrends);
+
+    // Generate comprehensive report
+    const report = {
+      lecture: {
+        id: lecture.id,
+        title: lecture.title,
+        key_concepts: keyConcepts
+      },
+      performance_summary: {
+        attempts_count: attempts.length,
+        best_score: Math.max(...attempts.map(a => a.score), 0),
+        average_score: attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length || 0,
+        improvement_trend: improvementMetrics,
+        latest_attempt: attempts[0] ? {
+          score: attempts[0].score,
+          date: attempts[0].attempted_at,
+          details: JSON.parse(attempts[0].attempt_data)
+        } : null
+      },
+      recommendations: generateComprehensiveRecommendations(
+        performanceTrends[0]?.topics || {},
+        improvementMetrics,
+        keyConcepts
+      )
+    };
+
+    console.log('[Performance Report] Successfully generated report');
+    res.json(report);
+
+  } catch (error) {
+    console.error('[Performance Report] Error:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate performance report',
+      details: error.message
+    });
+  }
+};
