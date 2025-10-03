@@ -185,6 +185,11 @@ class UIManager {
                     Lectures.loadLectures(true);
                 }
                 break;
+            case 'upload':
+                if (window.Upload) {
+                    window.Upload.resetUploadState();
+                }
+                break;
             case 'profile':
                 this.loadProfileData();
                 break;

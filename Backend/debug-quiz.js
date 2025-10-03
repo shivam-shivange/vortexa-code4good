@@ -55,7 +55,7 @@ async function debugQuizIssue() {
     try {
       const { GoogleGenerativeAI } = await import('@google/generative-ai');
       const client = new GoogleGenerativeAI(geminiKey);
-      const model = client.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      const model = client.getGenerativeModel({ model: 'gemini-2.5-flash' });
       
       const result = await model.generateContent('Generate a simple JSON object with one question about AI: {"questions":[{"question":"What is AI?","options":["A","B","C","D"],"correct_answer":"A"}]}');
       const response = result.response.text();

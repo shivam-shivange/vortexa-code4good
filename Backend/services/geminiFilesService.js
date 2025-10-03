@@ -10,7 +10,7 @@ class GeminiFilesService {
     }
     
     this.client = new GoogleGenerativeAI(this.apiKey);
-    this.model = this.client.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    this.model = this.client.getGenerativeModel({ model: 'gemini-2.5-flash' });
   }
 
   /**

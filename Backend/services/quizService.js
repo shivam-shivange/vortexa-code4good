@@ -89,7 +89,7 @@ export const generateQuiz = async (lectureId, lang='en', difficulty='medium', nu
     // Store the quiz in database
     const result = await pool.query(
       'INSERT INTO quizzes(lecture_id, lang, difficulty, items_json, gemini_model, generated_at) VALUES($1,$2,$3,$4,$5,$6) RETURNING id',
-      [lectureId, normalizedLang, difficulty, JSON.stringify(quizItems), 'gemini-1.5-flash', new Date()]
+      [lectureId, normalizedLang, difficulty, JSON.stringify(quizItems), 'gemini-2.5-flash', new Date()]
     );
 
     return {

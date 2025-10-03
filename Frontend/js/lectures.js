@@ -158,15 +158,21 @@ class LecturesManager {
             'data-lecture-id': lecture.id
         });
 
-        const thumbnail = lecture.thumbnail || 'https://via.placeholder.com/320x180?text=Video';
+        const thumbnail = lecture.thumbnail;
         const status = lecture.processing_status || 'ready';
         const statusClass = `status-${status}`;
         const statusText = status.charAt(0).toUpperCase() + status.slice(1);
 
         card.innerHTML = `
             <div class="lecture-thumbnail">
-                <img src="${thumbnail}" alt="${lecture.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                <i class="fas fa-video" style="display: none;"></i>
+                ${thumbnail ? 
+                    `<img src="${thumbnail}" alt="${lecture.title}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : 
+                    ''
+                }
+                <div class="placeholder-video ${thumbnail ? 'hidden' : ''}" style="${thumbnail ? 'display: none;' : 'display: flex;'}">
+                    <i class="fas fa-video" style="margin-right: 8px;"></i>
+                    Video
+                </div>
                 <div class="lecture-status ${statusClass}">${statusText}</div>
             </div>
             <div class="lecture-info">

@@ -231,7 +231,7 @@ class IngestionService {
       lectureId,
       language,
       summaryResult.summary,
-      'gemini-1.5-flash'
+      'gemini-2.5-flash'
     ];
 
     await db.query(query, values);
@@ -254,7 +254,7 @@ class IngestionService {
       lectureId,
       language,
       JSON.stringify(quizResult.quiz),
-      'gemini-1.5-flash'
+      'gemini-2.5-flash'
     ];
 
     await db.query(query, values);

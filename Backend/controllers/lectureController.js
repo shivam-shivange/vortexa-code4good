@@ -324,7 +324,7 @@ export const getLectureSummary = async (req, res) => {
       lang,
       style,
       summaryResult.summary,
-      'gemini-1.5-flash'
+      'gemini-2.5-flash'
     ]);
 
     const summary = insertResult.rows[0];
@@ -445,7 +445,7 @@ export const getLectureQuiz = async (req, res) => {
       lang,
       difficulty,
       JSON.stringify(quizResult.quiz),
-      'gemini-1.5-flash'
+      'gemini-2.5-flash'
     ]);
 
     const quiz = insertResult.rows[0];

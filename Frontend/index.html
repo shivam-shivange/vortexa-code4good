@@ -34,7 +34,7 @@
                 <button class="btn btn-outline" id="login-btn">Login</button>
                 <button class="btn btn-primary" id="signup-btn">Sign Up</button>
                 <div class="user-menu" id="user-menu" style="display: none;">
-                    <img src="https://via.placeholder.com/40" alt="User Avatar" class="user-avatar" id="user-avatar">
+                    <div class="placeholder-avatar" id="user-avatar">U</div>
                     <div class="dropdown-menu" id="dropdown-menu">
                         <a href="#profile" class="dropdown-item">
                             <i class="fas fa-user"></i> Profile
@@ -197,7 +197,7 @@
                                         <p>Drag and drop your video file here, or <span class="upload-link">browse</span></p>
                                         <small>Supported formats: MP4, AVI, MOV (Max: 500MB)</small>
                                     </div>
-                                    <div class="file-preview" id="video-preview" style="display: none;">
+                                    <div class="file-preview" style="display: none;">
                                         <div class="file-info">
                                             <i class="fas fa-video"></i>
                                             <span class="file-name"></span>
@@ -219,7 +219,7 @@
                                         <p>Drag and drop your presentation here, or <span class="upload-link">browse</span></p>
                                         <small>Supported formats: PPT, PPTX, PDF (Max: 100MB)</small>
                                     </div>
-                                    <div class="file-preview" id="ppt-preview" style="display: none;">
+                                    <div class="file-preview" style="display: none;">
                                         <div class="file-info">
                                             <i class="fas fa-file-powerpoint"></i>
                                             <span class="file-name"></span>
@@ -264,7 +264,9 @@
                 <div class="profile-container">
                     <div class="profile-header">
                         <div class="profile-avatar">
-                            <img src="https://via.placeholder.com/120" alt="Profile Picture" id="profile-picture">
+                            <div class="placeholder-profile" id="profile-picture">
+                                <i class="fas fa-user"></i>
+                            </div>
                             <button class="avatar-edit-btn">
                                 <i class="fas fa-camera"></i>
                             </button>

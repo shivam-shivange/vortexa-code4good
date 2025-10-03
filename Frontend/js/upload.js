@@ -6,6 +6,7 @@ class UploadManager {
         this.isUploading = false;
         this.uploadProgress = 0;
         
+        CONFIG.log('UploadManager initialized');
         this.init();
     }
 
@@ -13,6 +14,16 @@ class UploadManager {
     init() {
         this.setupEventListeners();
         this.setupDragAndDrop();
+        this.resetUploadState();
+    }
+
+    // Reset upload state (public method)
+    resetUploadState() {
+        CONFIG.log('Resetting upload state');
+        this.isUploading = false;
+        this.uploadProgress = 0;
+        this.setSubmitButtonState(false);
+        this.hideUploadProgress();
     }
 
     // Setup event listeners
@@ -37,8 +48,13 @@ class UploadManager {
         // Upload area clicks
         const videoUploadArea = Utils.$('#video-upload-area');
         if (videoUploadArea) {
-            Utils.on(videoUploadArea, 'click', () => {
+            Utils.on(videoUploadArea, 'click', (e) => {
+                // Don't trigger if clicking on the remove button or file input itself
+                if (e.target.closest('.remove-file') || e.target.type === 'file') {
+                    return;
+                }
                 if (!this.isUploading) {
+                    CONFIG.log('Video upload area clicked, opening file dialog');
                     videoInput.click();
                 }
             });
@@ -46,8 +62,13 @@ class UploadManager {
 
         const pptUploadArea = Utils.$('#ppt-upload-area');
         if (pptUploadArea) {
-            Utils.on(pptUploadArea, 'click', () => {
+            Utils.on(pptUploadArea, 'click', (e) => {
+                // Don't trigger if clicking on the remove button or file input itself
+                if (e.target.closest('.remove-file') || e.target.type === 'file') {
+                    return;
+                }
                 if (!this.isUploading) {
+                    CONFIG.log('PPT upload area clicked, opening file dialog');
                     pptInput.click();
                 }
             });
@@ -112,6 +133,7 @@ class UploadManager {
     // Handle file input selection
     handleFileSelect(e, fileType) {
         const files = e.target.files;
+        CONFIG.log(`File selected for ${fileType}:`, files.length > 0 ? files[0].name : 'No file');
         if (files.length > 0) {
             this.processFile(files[0], fileType);
         }
@@ -142,13 +164,24 @@ class UploadManager {
 
     // Display file preview
     displayFilePreview(file, fileType) {
+        CONFIG.log(`Displaying preview for ${fileType} file:`, file.name);
         const uploadArea = Utils.$(`#${fileType}-upload-area`);
         const placeholder = uploadArea.querySelector('.upload-placeholder');
         const preview = uploadArea.querySelector('.file-preview');
 
-        if (placeholder) placeholder.style.display = 'none';
+        CONFIG.log('Upload area elements found:', {
+            uploadArea: !!uploadArea,
+            placeholder: !!placeholder,
+            preview: !!preview
+        });
+
+        if (placeholder) {
+            placeholder.style.display = 'none';
+            CONFIG.log('Placeholder hidden');
+        }
         if (preview) {
             preview.style.display = 'flex';
+            CONFIG.log('Preview shown');
             
             const fileName = preview.querySelector('.file-name');
             const fileSize = preview.querySelector('.file-size');
@@ -187,11 +220,13 @@ class UploadManager {
         }
 
         if (this.isUploading) {
-            console.log('Upload already in progress');
+            CONFIG.logError('Upload already in progress. Current state:', {
+                isUploading: this.isUploading,
+                selectedVideoFile: !!this.selectedVideoFile,
+                selectedPptFile: !!this.selectedPptFile
+            });
             return;
         }
-        
-        this.isUploading = true;
 
         // Validate form
         const form = e.target;
@@ -212,7 +247,9 @@ class UploadManager {
         }
 
         try {
+            CONFIG.log('Starting upload process');
             this.isUploading = true;
+            this.setSubmitButtonState(true);
             this.showUploadProgress();
 
             // Create form data for upload
@@ -248,7 +285,9 @@ class UploadManager {
             this.hideUploadProgress();
             UI.showToast('error', 'Upload Failed', error.message);
         } finally {
+            CONFIG.log('Upload process finished, resetting state');
             this.isUploading = false;
+            this.setSubmitButtonState(false);
         }
     }
 
@@ -297,6 +336,25 @@ class UploadManager {
         if (uploadProgress) uploadProgress.style.display = 'none';
     }
 
+    // Set submit button state
+    setSubmitButtonState(isLoading) {
+        const submitBtn = Utils.$('#upload-submit-btn');
+        if (!submitBtn) return;
+
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnSpinner = submitBtn.querySelector('.btn-spinner');
+
+        if (isLoading) {
+            submitBtn.disabled = true;
+            if (btnText) btnText.style.display = 'none';
+            if (btnSpinner) btnSpinner.style.display = 'inline-block';
+        } else {
+            submitBtn.disabled = false;
+            if (btnText) btnText.style.display = 'inline-block';
+            if (btnSpinner) btnSpinner.style.display = 'none';
+        }
+    }
+
     // Reset upload form
     resetForm() {
         const form = Utils.$('#lecture-upload-form');
@@ -314,6 +372,12 @@ class UploadManager {
 
         // Clear any form errors
         this.clearFormErrors(form);
+
+        // Reset button state
+        this.setSubmitButtonState(false);
+        
+        // Reset upload state
+        this.isUploading = false;
     }
 
     // Reset file preview
@@ -422,6 +486,13 @@ window.removeFile = function(fileType) {
 window.resetUploadForm = function() {
     if (window.Upload) {
         window.Upload.resetForm();
+    }
+};
+
+// Global function to reset upload state
+window.resetUploadState = function() {
+    if (window.Upload) {
+        window.Upload.resetUploadState();
     }
 };
 
